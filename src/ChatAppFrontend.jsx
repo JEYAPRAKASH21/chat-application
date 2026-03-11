@@ -126,15 +126,20 @@ export default function ChatAppFrontend() {
       socket.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
+          const incomingSender = data.sender || "Unknown";
+          const incomingText = data.message || event.data;
+
+          const isOwnMessage =
+            incomingSender.trim().toLowerCase() === username.trim().toLowerCase();
 
           setMessages((prev) => [
             ...prev,
             {
               id: crypto.randomUUID(),
-              sender: data.sender || "Unknown",
-              text: data.message || event.data,
+              sender: isOwnMessage ? "You" : incomingSender,
+              text: incomingText,
               time: formatTime(),
-              own: false,
+              own: isOwnMessage,
               status: "sent",
             },
           ]);
@@ -198,6 +203,7 @@ export default function ChatAppFrontend() {
 
   const sendMessage = () => {
     if (!message.trim()) return;
+    if (!socketRef.current || !isConnected) return;
 
     const text = message.trim();
 
@@ -208,20 +214,7 @@ export default function ChatAppFrontend() {
       message: text,
     };
 
-    const ownMessage = {
-      id: crypto.randomUUID(),
-      sender: "You",
-      text,
-      time: formatTime(),
-      own: true,
-      status: isConnected ? "sent" : "draft",
-    };
-
-    setMessages((prev) => [...prev, ownMessage]);
-
-    if (socketRef.current && isConnected) {
-      socketRef.current.send(JSON.stringify(payload));
-    }
+    socketRef.current.send(JSON.stringify(payload));
 
     setMessage("");
 
